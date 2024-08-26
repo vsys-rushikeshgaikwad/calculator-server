@@ -35,6 +35,16 @@ func (c *operation) Divide() (float64, error) {
 	return c.a / c.b, nil
 }
 
+func userInput() (float64, float64) {
+	fmt.Println("Enter the value of a")
+	var a float64
+	fmt.Scanln(&a)
+	fmt.Println("Enter the value of b")
+	var b float64
+	fmt.Scanln(&b)
+	return a, b
+}
+
 func main() {
 	// Map to store results of operations
 	resultMap := make(map[string]interface{})
@@ -53,12 +63,7 @@ func main() {
 		switch choice {
 		case 1:
 			fmt.Println("You have Selected Addition:")
-			fmt.Println("Please Enter the value for a")
-			var a float64
-			fmt.Scanln(&a)
-			fmt.Println("Please Enter the Value for b")
-			var b float64
-			fmt.Scanln(&b)
+			a, b := userInput()
 			cal := operation{a, b}
 			result, err := cal.Add()
 			if err != nil {
@@ -66,16 +71,10 @@ func main() {
 				continue
 			}
 			resultMap["Addition"] = result
-			fmt.Println("The result is:", result)
 
 		case 2:
 			fmt.Println("You have Selected Subtraction:")
-			fmt.Println("Please Enter the value for a")
-			var a float64
-			fmt.Scanln(&a)
-			fmt.Println("Please Enter the value for b")
-			var b float64
-			fmt.Scanln(&b)
+			a, b := userInput()
 			cal := operation{a, b}
 			result, err := cal.Subtract()
 			if err != nil {
@@ -83,16 +82,10 @@ func main() {
 				continue
 			}
 			resultMap["Subtraction"] = result
-			fmt.Println("The result is:", result)
 
 		case 3:
 			fmt.Println("You have Selected Multiplication:")
-			fmt.Println("Please Enter the value for a")
-			var a float64
-			fmt.Scanln(&a)
-			fmt.Println("Please Enter the value for b")
-			var b float64
-			fmt.Scanln(&b)
+			a, b := userInput()
 			cal := operation{a, b}
 			result, err := cal.Multiply()
 			if err != nil {
@@ -100,16 +93,10 @@ func main() {
 				continue
 			}
 			resultMap["Multiplication"] = result
-			fmt.Println("The result is:", result)
 
 		case 4:
 			fmt.Println("You have Selected Division:")
-			fmt.Println("Please Enter the value for a")
-			var a float64
-			fmt.Scanln(&a)
-			fmt.Println("Please Enter the value for b")
-			var b float64
-			fmt.Scanln(&b)
+			a, b := userInput()
 			cal := operation{a, b}
 			result, err := cal.Divide()
 			if err != nil {
@@ -117,22 +104,12 @@ func main() {
 				continue
 			}
 			resultMap["Division"] = result
-			fmt.Println("The result is:", result)
 
 		case 5:
 			fmt.Println("Previous results:")
 			for i, value := range resultMap {
-				if v, ok := value.(float64); ok {
-					if v == float64(int(v)) {
-						fmt.Printf("%s: %d\n", i, int(v))
-					} else {
-						fmt.Printf("%s: %f\n", i, v)
-					}
-				} else {
-					fmt.Println("Error: unexpected type")
-				}
+				fmt.Printf("%s: %v\n", i, value)
 			}
-
 		case 0:
 			fmt.Println("You have selected 0 for exit")
 			return
