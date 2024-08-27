@@ -16,6 +16,14 @@ type operation struct {
 	a, b float64
 }
 
+type CalculatorPage struct {
+	html string
+}
+
+func (c *CalculatorPage) Build() string {
+	return c.html
+}
+
 func (c *operation) Add() (float64, error) {
 	return c.a + c.b, nil
 }
@@ -48,6 +56,7 @@ func userInput() (float64, float64) {
 func main() {
 	// Map to store results of operations
 	resultMap := make(map[string]interface{})
+	//builder := CalculatorPage{}
 
 	for {
 		fmt.Println("Enter a number between 1 to 5")
