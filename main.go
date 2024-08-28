@@ -3,6 +3,9 @@ package main
 import (
 	"errors"
 	"fmt"
+	"net"
+	"net/http"
+	"strings"
 )
 
 type Calculator interface {
@@ -14,14 +17,6 @@ type Calculator interface {
 
 type operation struct {
 	a, b float64
-}
-
-type CalculatorPage struct {
-	html string
-}
-
-func (c *CalculatorPage) Build() string {
-	return c.html
 }
 
 func (c *operation) Add() (float64, error) {
@@ -53,10 +48,115 @@ func userInput() (float64, float64) {
 	return a, b
 }
 
+func helloHandler(w http.ResponseWriter, r *http.Request) {
+	cp := CalculatorPage{}
+	html := cp.Build()
+	w.Write([]byte(html))
+	//fmt.Println(html)
+}
+
+type CalculatorPage struct {
+	html string
+}
+
+func (c *CalculatorPage) Build() string {
+	htmlCode := `<!DOCTYPE html>
+<html>
+<head>
+	<title>Calculator</title>
+	<style>
+		body {
+			font-family: Arial, sans-serif;
+			text-align: center;
+		}
+		.container {
+			width: 50%;
+			margin: 40px auto;
+			padding: 20px;
+			border: 1px solid #ccc;
+			border-radius: 10px;
+			box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+		}
+		.dropdown {
+			width: 94%;
+			padding: 10px;
+			border: none;
+			border-radius: 5px;
+			background-color: #f9f9f9;
+            margin-bottom: 18px;
+		}
+		.input-field {
+			width: 92%;
+			padding: 10px;
+			margin-bottom: 20px;
+			border: 1px solid #ccc;
+		}
+		.button {
+			background-color: #4CAF50;
+			color: #fff;
+			padding: 10px 20px;
+			border: none;
+			border-radius: 5px;
+			cursor: pointer;
+		}
+		.button:hover {
+			background-color: #3e8e41;
+		}
+		.result {
+			margin-top: 20px;
+			font-size: 24px;
+			font-weight: bold;
+			color: #666;
+		}
+		#result-field{
+			margin-top: -7rem;
+		}
+		
+	</style>
+</head>
+<body>
+	<div class="container">
+		<h2>Calculator</h2>
+		<select class="dropdown" id="operation">
+			<option value="">Select Operation</option>
+			<option value="add">Addition</option>
+			<option value="subtract">Subtraction</option>
+			<option value="multiply">Multiplication</option>
+			<option value="divide">Division</option>
+		</select>
+		<input type="number" class="input-field" id="a" placeholder="Enter value for A">
+		<input type="number" class="input-field" id="b" placeholder="Enter value for B">
+		<div class="result" id="result"></div>
+		<input type="text" class="input-field" id="result-field" placeholder="Result">
+		<button class="button" id="submit">Submit</button>
+		<button class="button" id="result-btn">Result</button>
+		
+	</div>
+
+	
+</body>
+</html>`
+
+	return htmlCode
+}
+
 func main() {
 	// Map to store results of operations
 	resultMap := make(map[string]interface{})
-	//builder := CalculatorPage{}
+
+	http.HandleFunc("/", helloHandler)
+	http.ListenAndServe(":8080", nil)
+
+	ln, err := net.Listen("tcp", ":8080")
+	if err != nil {
+		if strings.Contains(err.Error(), "address already in use") {
+			fmt.Println("Port 8085 is already in use. Exiting.")
+			return
+		}
+		fmt.Println(err)
+		return
+	}
+	defer ln.Close()
 
 	for {
 		fmt.Println("Enter a number between 1 to 5")
