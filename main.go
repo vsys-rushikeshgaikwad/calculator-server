@@ -1,18 +1,28 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 )
+
+var resultMap = make(map[string]interface{})
 
 type Calculator interface {
 	Add() (float64, error)
 	Subtract() (float64, error)
 	Multiply() (float64, error)
 	Divide() (float64, error)
+}
+
+type value struct {
+	A string
+	B string
 }
 
 type operation struct {
@@ -48,15 +58,100 @@ func userInput() (float64, float64) {
 	return a, b
 }
 
-func helloHandler(w http.ResponseWriter, r *http.Request) {
-	cp := CalculatorPage{}
-	html := cp.Build()
-	w.Write([]byte(html))
-	//fmt.Println(html)
+func Handler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet {
+		if r.URL.Path == "/results" {
+			page := &ResultsPage{}
+			w.Write([]byte(page.Build()))
+		} else {
+			page := &CalculatorPage{}
+			w.Write([]byte(page.Build()))
+		}
+	} else if r.Method == http.MethodPost {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		var data map[string]string
+		err = json.Unmarshal(body, &data)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		valueA, err := strconv.ParseFloat(data["a"], 64)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		valueB, err := strconv.ParseFloat(data["b"], 64)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		operationType := data["op"]
+		fmt.Printf("Operation: %s\n", operationType)
+		fmt.Printf("Value A: %v\n", valueA)
+		fmt.Printf("Value B: %v\n", valueB)
+
+		var calc Calculator
+		op := operation{valueA, valueB}
+		switch operationType {
+		case "add":
+			calc = &op
+			result, err := calc.Add()
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			resultMap["Addition"] = result
+			fmt.Printf("Result: %v\n", result)
+			w.Write([]byte(fmt.Sprintf("%v", result)))
+		case "subtract":
+			calc = &op
+			result, err := calc.Subtract()
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			resultMap["Subtraction"] = result
+			fmt.Printf("Result: %v\n", result)
+			w.Write([]byte(fmt.Sprintf("%v", result)))
+		case "multiply":
+			calc = &op
+			result, err := calc.Multiply()
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			resultMap["Multiplication"] = result
+			fmt.Printf("Result: %v\n", result)
+			w.Write([]byte(fmt.Sprintf("%v", result)))
+
+		case "divide":
+			calc = &op
+			result, err := calc.Divide()
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			resultMap["Division"] = result
+			fmt.Printf("Result: %v\n", result)
+			w.Write([]byte(fmt.Sprintf("%v", result)))
+
+		default:
+			fmt.Println("Invalid operation")
+		}
+
+	}
 }
 
 type CalculatorPage struct {
-	html string
+	Html string
 }
 
 func (c *CalculatorPage) Build() string {
@@ -128,29 +223,80 @@ func (c *CalculatorPage) Build() string {
 		<input type="number" class="input-field" id="b" placeholder="Enter value for B">
 		<div class="result" id="result"></div>
 		<input type="text" class="input-field" id="result-field" placeholder="Result">
-		<button class="button" id="submit">Submit</button>
+		<button class="button" id="submit" name="submit">Submit</button>
 		<button class="button" id="result-btn">Result</button>
-		
+		<button class="button" id="clear-btn">Clear</button>
 	</div>
 
-	
+	<script>
+  	document.addEventListener("DOMContentLoaded", () => {
+    const SubmitBtn = document.getElementById("submit");
+	const clearBtn = document.getElementById("clear-btn");
+    const resultBtn = document.getElementById("result-btn");
+
+    SubmitBtn.addEventListener("click", (event) => {
+      event.preventDefault();
+
+      const valueA = document.getElementById("a").value;
+      const valueB = document.getElementById("b").value;
+      const operation = document.getElementById("operation").value;
+      const url = "http://localhost:8086/";
+      fetch(url, {
+        method: 'POST',
+        body: JSON.stringify({ a: valueA, b: valueB, op: operation }),
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      .then(response => response.text())
+      .then(result => {
+        document.getElementById("result-field").value = result;
+      });
+    });
+
+    resultBtn.addEventListener("click", (event) => {
+      event.preventDefault();
+      window.location.href = "http://localhost:8086/results";
+    });
+
+    clearBtn.addEventListener("click", (event) => {
+      event.preventDefault();
+      document.getElementById("a").value = "";
+      document.getElementById("b").value = "";
+      document.getElementById("operation").value = "";
+      document.getElementById("result-field").value = "";
+    });
+  });
+</script>
 </body>
 </html>`
-
 	return htmlCode
 }
 
+type ResultsPage struct {
+	Html string
+}
+
+func (r *ResultsPage) Build() string {
+	var resultsHtml strings.Builder
+	resultsHtml.WriteString(`<html><body><h2>Operation Results</h2><ul>`)
+	for operation, result := range resultMap {
+		resultsHtml.WriteString(fmt.Sprintf("%s: %v", operation, result))
+	}
+	resultsHtml.WriteString(`<form action="/" method="get">
+	<button class="button" id="back-btn">Back to Calculator</button>
+</form></body></html>`)
+	return resultsHtml.String()
+}
+
 func main() {
-	// Map to store results of operations
-	resultMap := make(map[string]interface{})
 
-	http.HandleFunc("/", helloHandler)
-	http.ListenAndServe(":8080", nil)
+	http.HandleFunc("/", Handler)
+	http.ListenAndServe(":8086", nil)
 
-	ln, err := net.Listen("tcp", ":8080")
+	ln, err := net.Listen("tcp", ":8086")
 	if err != nil {
 		if strings.Contains(err.Error(), "address already in use") {
-			fmt.Println("Port 8085 is already in use. Exiting.")
 			return
 		}
 		fmt.Println(err)
