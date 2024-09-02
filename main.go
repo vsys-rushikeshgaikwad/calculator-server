@@ -42,8 +42,8 @@ func (c *operation) Multiply() (float64, error) {
 }
 
 func (c *operation) Divide() (float64, error) {
-	if c.b == 0 {
-		return 0, errors.New("division by zero")
+	if c.b == 0 || c.a == 0 {
+		return 0, errors.New("Undefined")
 	}
 	return c.a / c.b, nil
 }
@@ -100,53 +100,42 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 		var calc Calculator
 		op := operation{valueA, valueB}
+		var result float64
+		var opString string
+
 		switch operationType {
 		case "add":
 			calc = &op
-			result, err := calc.Add()
-			if err != nil {
-				fmt.Println(err)
-				return
-			}
-			resultMap["Addition"] = result
-			fmt.Printf("Result: %v\n", result)
-			w.Write([]byte(fmt.Sprintf("%v", result)))
+			result, err = calc.Add()
+			opString = fmt.Sprintf("Addition: %v + %v = %v", valueA, valueB, result)
 		case "subtract":
 			calc = &op
-			result, err := calc.Subtract()
-			if err != nil {
-				fmt.Println(err)
-				return
-			}
-			resultMap["Subtraction"] = result
-			fmt.Printf("Result: %v\n", result)
-			w.Write([]byte(fmt.Sprintf("%v", result)))
+			result, err = calc.Subtract()
+			opString = fmt.Sprintf("Subtraction: %v - %v = %v", valueA, valueB, result)
 		case "multiply":
 			calc = &op
-			result, err := calc.Multiply()
-			if err != nil {
-				fmt.Println(err)
-				return
-			}
-			resultMap["Multiplication"] = result
-			fmt.Printf("Result: %v\n", result)
-			w.Write([]byte(fmt.Sprintf("%v", result)))
-
+			result, err = calc.Multiply()
+			opString = fmt.Sprintf("Multiplication: %v * %v = %v", valueA, valueB, result)
 		case "divide":
 			calc = &op
-			result, err := calc.Divide()
+			result, err = calc.Divide()
 			if err != nil {
-				fmt.Println(err)
-				return
+				opString = fmt.Sprintf("Division: %v / %v = %v", valueA, valueB)
+			} else {
+				opString = fmt.Sprintf("Division: %v / %v = %v", valueA, valueB, result)
 			}
-			resultMap["Division"] = result
-			fmt.Printf("Result: %v\n", result)
-			w.Write([]byte(fmt.Sprintf("%v", result)))
-
 		default:
 			fmt.Println("Invalid operation")
+			return
 		}
 
+		if err == nil {
+			resultMap[operationType] = opString
+			fmt.Printf("Result: %v\n", result)
+			w.Write([]byte(fmt.Sprintf("%v", result)))
+		} else {
+			fmt.Println(err)
+		}
 	}
 }
 
@@ -280,8 +269,8 @@ type ResultsPage struct {
 func (r *ResultsPage) Build() string {
 	var resultsHtml strings.Builder
 	resultsHtml.WriteString(`<html><body><h2>Operation Results</h2><ul>`)
-	for operation, result := range resultMap {
-		resultsHtml.WriteString(fmt.Sprintf("%s: %v", operation, result))
+	for _, opString := range resultMap {
+		resultsHtml.WriteString(fmt.Sprintf("<p>%s</p>", opString))
 	}
 	resultsHtml.WriteString(`<form action="/" method="get">
 	<button class="button" id="back-btn">Back to Calculator</button>
