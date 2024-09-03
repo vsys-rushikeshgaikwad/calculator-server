@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 )
 
 var resultMap = make(map[string]interface{})
@@ -26,7 +27,8 @@ type value struct {
 }
 
 type operation struct {
-	a, b float64
+	a, b      float64
+	timestamp string
 }
 
 func (c *operation) Add() (float64, error) {
@@ -42,9 +44,10 @@ func (c *operation) Multiply() (float64, error) {
 }
 
 func (c *operation) Divide() (float64, error) {
-	if c.b == 0 || c.a == 0 {
-		return 0, errors.New("Undefined")
+	if c.b == 0 {
+		return 0, errors.New("undefined")
 	}
+
 	return c.a / c.b, nil
 }
 
@@ -99,30 +102,32 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("Value B: %v\n", valueB)
 
 		var calc Calculator
-		op := operation{valueA, valueB}
+		op := operation{a: valueA, b: valueB}
 		var result float64
 		var opString string
+
+		now := time.Now().Format("02-01-2006 15:04")
 
 		switch operationType {
 		case "add":
 			calc = &op
 			result, err = calc.Add()
-			opString = fmt.Sprintf("Addition: %v + %v = %v", valueA, valueB, result)
+			opString = fmt.Sprintf("%s Addition: %v + %v = %v", now, valueA, valueB, result)
 		case "subtract":
 			calc = &op
 			result, err = calc.Subtract()
-			opString = fmt.Sprintf("Subtraction: %v - %v = %v", valueA, valueB, result)
+			opString = fmt.Sprintf("%s Subtraction: %v - %v = %v", now, valueA, valueB, result)
 		case "multiply":
 			calc = &op
 			result, err = calc.Multiply()
-			opString = fmt.Sprintf("Multiplication: %v * %v = %v", valueA, valueB, result)
+			opString = fmt.Sprintf("%s Multiplication: %v * %v = %v", now, valueA, valueB, result)
 		case "divide":
 			calc = &op
 			result, err = calc.Divide()
 			if err != nil {
-				opString = fmt.Sprintf("Division: %v / %v = %v", valueA, valueB)
+				opString = fmt.Sprintf("%s Division: %v / %v = undefined", now, valueA, valueB)
 			} else {
-				opString = fmt.Sprintf("Division: %v / %v = %v", valueA, valueB, result)
+				opString = fmt.Sprintf("%s Division: %v / %v = %v", now, valueA, valueB, result)
 			}
 		default:
 			fmt.Println("Invalid operation")
@@ -135,6 +140,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte(fmt.Sprintf("%v", result)))
 		} else {
 			fmt.Println(err)
+			resultMap[operationType] = opString
+			w.Write([]byte("undefined"))
 		}
 	}
 }
@@ -182,6 +189,7 @@ func (c *CalculatorPage) Build() string {
 			border: none;
 			border-radius: 5px;
 			cursor: pointer;
+			
 		}
 		.button:hover {
 			background-color: #3e8e41;
@@ -268,13 +276,67 @@ type ResultsPage struct {
 
 func (r *ResultsPage) Build() string {
 	var resultsHtml strings.Builder
-	resultsHtml.WriteString(`<html><body><h2>Operation Results</h2><ul>`)
+	resultsHtml.WriteString(`
+<html>
+<head>
+	<style>
+		body {
+			font-family: Arial, sans-serif;
+		}
+		.container {
+			width: 80%;
+			margin: 0 auto;
+			padding: 20px;
+		}
+		.result-list {
+			margin-bottom: 20px;
+		}
+		.back-button-container {
+			text-align: right;
+		}
+		.button {
+			background-color: #4CAF50;
+			color: #fff;
+			padding: 10px 20px;
+			border: none;
+			border-radius: 5px;
+			cursor: pointer;
+		}
+		.back-button-container {
+    		text-align: right;
+    		position: absolute; 
+    		top: 20px; 
+    		right: 100px; 
+
+		}
+
+		.button:hover {
+			background-color: #3e8e41;
+		}
+	</style>
+</head>
+<body>
+	<div class="container">
+		<h2>Operation Results</h2>
+		<div class="result-list">
+			<ul>`)
+
 	for _, opString := range resultMap {
-		resultsHtml.WriteString(fmt.Sprintf("<p>%s</p>", opString))
+		resultsHtml.WriteString(fmt.Sprintf("<ol>%s</ol>", opString))
 	}
-	resultsHtml.WriteString(`<form action="/" method="get">
-	<button class="button" id="back-btn">Back to Calculator</button>
-</form></body></html>`)
+
+	resultsHtml.WriteString(`
+			</ul>
+		</div>
+		<div class="back-button-container">
+			<form action="/" method="get">
+				<button class="button" id="back-btn">Back to Calculator</button>
+			</form>
+		</div>
+	</div>
+</body>
+</html>`)
+
 	return resultsHtml.String()
 }
 
@@ -293,73 +355,73 @@ func main() {
 	}
 	defer ln.Close()
 
-	for {
-		fmt.Println("Enter a number between 1 to 5")
-		fmt.Println("Enter 1 for Addition")
-		fmt.Println("Enter 2 for Subtraction")
-		fmt.Println("Enter 3 for Multiplication")
-		fmt.Println("Enter 4 for Division")
-		fmt.Println("Enter 5 to View Results")
-		fmt.Println("Enter 0 to Exit")
-		var choice int
-		fmt.Scanln(&choice)
+	// for {
+	// 	fmt.Println("Enter a number between 1 to 5")
+	// 	fmt.Println("Enter 1 for Addition")
+	// 	fmt.Println("Enter 2 for Subtraction")
+	// 	fmt.Println("Enter 3 for Multiplication")
+	// 	fmt.Println("Enter 4 for Division")
+	// 	fmt.Println("Enter 5 to View Results")
+	// 	fmt.Println("Enter 0 to Exit")
+	// 	var choice int
+	// 	fmt.Scanln(&choice)
 
-		switch choice {
-		case 1:
-			fmt.Println("You have Selected Addition:")
-			a, b := userInput()
-			cal := operation{a, b}
-			result, err := cal.Add()
-			if err != nil {
-				fmt.Println(err)
-				continue
-			}
-			resultMap["Addition"] = result
+	// 	switch choice {
+	// 	case 1:
+	// 		fmt.Println("You have Selected Addition:")
+	// 		a, b := userInput()
+	// 		cal := operation{a, b, time}
+	// 		result, err := cal.Add()
+	// 		if err != nil {
+	// 			fmt.Println(err)
+	// 			continue
+	// 		}
+	// 		resultMap["Addition"] = result
 
-		case 2:
-			fmt.Println("You have Selected Subtraction:")
-			a, b := userInput()
-			cal := operation{a, b}
-			result, err := cal.Subtract()
-			if err != nil {
-				fmt.Println(err)
-				continue
-			}
-			resultMap["Subtraction"] = result
+	// 	case 2:
+	// 		fmt.Println("You have Selected Subtraction:")
+	// 		a, b := userInput()
+	// 		cal := operation{a, b, timestamp}
+	// 		result, err := cal.Subtract()
+	// 		if err != nil {
+	// 			fmt.Println(err)
+	// 			continue
+	// 		}
+	// 		resultMap["Subtraction"] = result
 
-		case 3:
-			fmt.Println("You have Selected Multiplication:")
-			a, b := userInput()
-			cal := operation{a, b}
-			result, err := cal.Multiply()
-			if err != nil {
-				fmt.Println(err)
-				continue
-			}
-			resultMap["Multiplication"] = result
+	// 	case 3:
+	// 		fmt.Println("You have Selected Multiplication:")
+	// 		a, b := userInput()
+	// 		cal := operation{a, b}
+	// 		result, err := cal.Multiply()
+	// 		if err != nil {
+	// 			fmt.Println(err)
+	// 			continue
+	// 		}
+	// 		resultMap["Multiplication"] = result
 
-		case 4:
-			fmt.Println("You have Selected Division:")
-			a, b := userInput()
-			cal := operation{a, b}
-			result, err := cal.Divide()
-			if err != nil {
-				fmt.Println(err)
-				continue
-			}
-			resultMap["Division"] = result
+	// 	case 4:
+	// 		fmt.Println("You have Selected Division:")
+	// 		a, b := userInput()
+	// 		cal := operation{a, b}
+	// 		result, err := cal.Divide()
+	// 		if err != nil {
+	// 			fmt.Println(err)
+	// 			continue
+	// 		}
+	// 		resultMap["Division"] = result
 
-		case 5:
-			fmt.Println("Previous results:")
-			for i, value := range resultMap {
-				fmt.Printf("%s: %v\n", i, value)
-			}
-		case 0:
-			fmt.Println("You have selected 0 for exit")
-			return
+	// 	case 5:
+	// 		fmt.Println("Previous results:")
+	// 		for i, value := range resultMap {
+	// 			fmt.Printf("%s: %v\n", i, value)
+	// 		}
+	// 	case 0:
+	// 		fmt.Println("You have selected 0 for exit")
+	// 		return
 
-		default:
-			fmt.Println("Invalid choice. Please choose a valid number.")
-		}
-	}
+	// 	default:
+	// 		fmt.Println("Invalid choice. Please choose a valid number.")
+	// 	}
+	// }
 }
